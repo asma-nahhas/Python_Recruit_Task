@@ -3,19 +3,32 @@ from .models import Document
 from .forms import DocumentForm
 from django.http import JsonResponse
 from django.http import HttpResponse
+from docx import Document as DOCX
+from django.core import serializers
+from dict2xml import dict2xml
+import json
+
+
+
+#Upload the Document file and save a copy to the database model Table
 
 def uploadDocx(request):
-    print(f"Great!Starting Uploading Doocx files here")
-    message = 'Please Select the Document file that you want'
+    message = ''
     # Handle file upload
     if request.method == 'POST':
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid():
             newdoc = Document(docfile=request.FILES['docfile'])
+            newdoc.docfile.name='Table1.docx'
             newdoc.save()
+            print(newdoc.docfile.url)
+            message = 'File Uploaded Succesfuly'
+
+
+            documents = Document.objects.all()
 
             # Redirect to the document list after POST
-            return redirect('uploadDocx')
+            return render(request,'list.html',{'documents': documents,'form': form,'message':message})
         else:
             message = 'The form is not valid. Fix the following error:'
     else:
@@ -28,24 +41,117 @@ def uploadDocx(request):
     context = {'documents': documents, 'form': form, 'message': message}
     return render(request, 'list.html', context)
 
+
+
+
+
+
+ #Convert The selected table to a json object   
+
 def  JsonTable(request):
-    context={
-        "title": "Table 1",
-        "rows": [{
-        "cells": ["Header 1", "Header 2", "Header 3"]
-            },
-            {
-            "cells": ["Value 1", "Value 2", "Value 3"]
-            },
-            {
-                "cells": ["Value 1", "Value 2", "Value 3"]
-            }
-        ]
-        }
+    #f = open('media/documents/Table1.docx', 'rb')
+    #document = DOCX(f)
 
-    #return render(request, 'demo.html', context)
-    return JsonResponse(context)
+    #first we should get all the tables titles
+    Headers=[]
+    doc=DOCX('media/documents/Table1.docx')
+    for paragraph in doc.paragraphs:
+        if paragraph.style.name=='Heading 1':
+            Headers.append(paragraph.text)
 
-def XMLTable(request):
-    return HttpResponse(open('templates/myxmlfile.xml').read())
+    print (Headers)
+
+    tables = doc.tables
+    
+    table=doc.tables[0]
+
+    data = []
+    title={}
+    title["title"]="Table1"
+
+
+    data.append(title)
+
+    #print(list(enumerate(table.rows)))
+
+    keys = None
+    for i, row in enumerate(table.rows):
+        text = (cell.text for cell in row.cells)
+
+
+        # Establish the mapping based on the first row
+        # headers; these will become the keys of our dictionary
+        if i == 0:
+            
+            
+            keys = tuple(text)
+            
+            continue
+
+        # Construct a dictionary for this row, mapping
+        # keys to values for this row
+        row_data = dict(zip(keys, text))
+        
+        data.append(row_data)
+        
+
+    print(data)
+
+    #Convert dictionary object to Json Object
+    json_object = json.dumps(data, indent = 4)   
+
+    #doc1 = Document.objects.filter(id=32)
+    return render(request, 'demo.html', {"json":json_object})
+
+
+
+#convert the selected table to a XML Object
+
+def  XMLTable(request):
+
+    doc=DOCX('media/documents/demo.docx')
+    tables = doc.tables
+    print(tables)
+    table=doc.tables[0]
+    data = []
+    title={}
+    title["title"]="Table1"
+
+    print(title)
+    data.append(title)
+
+    print("table is")
+    print(table.rows[0].cells[0].text)
+    print(list(enumerate(table.rows)))
+
+    keys = None
+    for i, row in enumerate(table.rows):
+        text = (cell.text for cell in row.cells)
+        print("the text is")
+        print(text)
+
+        # Establish the mapping based on the first row
+        # headers; these will become the keys of our dictionary
+        if i == 0:
+            print(i)
+            
+            keys = tuple(text)
+            print(keys)
+            continue
+
+        # Construct a dictionary for this row, mapping
+        # keys to values for this row
+        row_data = dict(zip(keys, text))
+        print(text)
+        data.append(row_data)
+        print(data)
+
+    print(data)
+
+    #Convert the file to XML Object 
+    xml = dict2xml(data) 
+    print(xml)
+
+    return render(request, 'xml.html', {"xml":xml})
+
     

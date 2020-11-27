@@ -6,7 +6,6 @@ from .views import XMLTable
 urlpatterns = [
     path('', uploadDocx, name='uploadDocx'),
     path('JsonTable', JsonTable, name='JsonTable'),
-    path('XMLTable', XMLTable, name='XMLTable')
-    
-    
+    path('XMLTable', XMLTable, name='XMLTable'),
+        
 ]
