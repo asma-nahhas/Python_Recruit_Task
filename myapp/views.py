@@ -7,6 +7,8 @@ from docx import Document as DOCX
 from django.core import serializers
 from dict2xml import dict2xml
 import json
+import re
+from Tables.models import Table
 
 
 
@@ -19,10 +21,30 @@ def uploadDocx(request):
         form = DocumentForm(request.POST, request.FILES)
         if form.is_valid():
             newdoc = Document(docfile=request.FILES['docfile'])
-            newdoc.docfile.name='Table1.docx'
+            #newdoc.docfile.name='Table1.docx'
             newdoc.save()
-            print(newdoc.docfile.url)
-            message = 'File Uploaded Succesfuly'
+            print(newdoc.docfile.name)
+
+            
+            Headers=[]
+            f = open('media/'+newdoc.docfile.name, 'rb')
+            doc=DOCX(f)
+            for paragraph in doc.paragraphs:
+                if paragraph.style.name=='Heading 1':
+                    Headers.append(paragraph.text)
+                    if re.search(r"^Table", paragraph.text):
+                        print("Match found")
+                        message = 'File Uploaded Succesfuly'
+                        #Here We Should add this table title to the table Table
+                        newTable=Table(name=paragraph.text)
+                        newTable.save();
+
+                    else:
+                        print("Match not found")
+                        message = 'File Titles Mismatching'
+
+
+            print (Headers)
 
 
             documents = Document.objects.all()
@@ -53,13 +75,7 @@ def  JsonTable(request):
     #document = DOCX(f)
 
     #first we should get all the tables titles
-    Headers=[]
-    doc=DOCX('media/documents/Table1.docx')
-    for paragraph in doc.paragraphs:
-        if paragraph.style.name=='Heading 1':
-            Headers.append(paragraph.text)
-
-    print (Headers)
+    doc=DOCX('media/documents/demo.docx')
 
     tables = doc.tables
     
